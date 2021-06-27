@@ -41,7 +41,7 @@ int main(){
         int temp = recv(sfd, buffer, 10000, 0);
         string error = buffer;
         if(error.length() != 0){
-            cout<<"Error executing command "<<endl<<error<<endl;
+            cout<<"\033[1;31mError executing command "<<endl<<error<<"\033[0m\n";
         }
     }
 	close(sfd);

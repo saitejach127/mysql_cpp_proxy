@@ -62,9 +62,6 @@ void connectMysql(){
 		closeAndExit(e.what());
 	}
     con->setSchema("startDB");
-	// stmt = con->createStatement();
-	// stmt->execute("DROP TABLE IF EXISTS inventory");
-    // delete stmt;
 }
 
 string executeCmd(string cmd){
@@ -92,7 +89,11 @@ void closeAndExit(string msg){
     if(con){
         delete con;
     }
-    exit(0);
+    exit(1);
+}
+
+bool verifyToken(string token){
+    return false;
 }
 
 int main(){
@@ -141,7 +142,12 @@ int main(){
         if(popReq.cmd == "exit"){
             break;
         }
-
+        bool auth = verifyToken(popReq.token);
+        if(!auth){
+            string noAuthError = "Request not Authenticated";
+            send(nsfd, noAuthError.c_str(),10000,0);
+            continue;
+        }
         string error = executeCmd(popReq.cmd);
         send(nsfd, error.c_str(),10000,0);
     }
