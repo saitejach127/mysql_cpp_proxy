@@ -15,9 +15,13 @@
 using namespace std;
 #define PORT 4322
 
+void closeAndExit(string msg);
+
 const string server = "tcp://localhost:3306";
 const string username = "root";
 const string password = "ML#tensorflow@122";
+
+int sfd,nsfd;
 
 sql::Driver *driver;
 sql::Connection *con;
@@ -55,9 +59,7 @@ void connectMysql(){
 	}
 	catch (sql::SQLException e)
 	{
-		cout << "Could not connect to server. Error message: " << e.what() << endl;
-		system("pause");
-		exit(1);
+		closeAndExit(e.what());
 	}
     con->setSchema("startDB");
 	// stmt = con->createStatement();
@@ -80,15 +82,24 @@ string executeCmd(string cmd){
     return "";
 }
 
+void closeAndExit(string msg){
+    cout<<msg<<endl;
+    close(nsfd);
+    close(sfd);
+    if(stmt){
+        delete stmt;
+    }
+    if(con){
+        delete con;
+    }
+    exit(0);
+}
+
 int main(){
     string text;
-    int sfd = socket(AF_INET, SOCK_STREAM, 0);
+    sfd = socket(AF_INET, SOCK_STREAM, 0);
     if(sfd < 0){
-        cout<<"Server Socket Could not be created"<<endl;
-        if(con){
-            delete con;
-        }
-        exit(4);
+        closeAndExit("Server Socket Could not be created");
     }
     struct sockaddr_in myaddr, paddr;
     myaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -97,30 +108,18 @@ int main(){
     bzero(&myaddr.sin_zero, 8);
     int k2 = bind(sfd, (struct sockaddr *)&myaddr, sizeof(struct sockaddr_in));
     if(k2 < 0){
-        cout<<"Error occured in binding the server socket"<<endl;
-        if(con){
-            delete con;
-        }
-        exit(2);
+        closeAndExit("Error occured in binding the server socket");
     }
     int k3 = listen(sfd, 10);
     if(k3 < 0){
-        cout<<"Error occured in Listening for connections"<<endl;
-        if(con){
-            delete con;
-        }
-        exit(3);
+        closeAndExit("Error occured in Listening for connections");
     }
     connectMysql();
     socklen_t addrlen;
     addrlen = sizeof(paddr);
-    int nsfd = accept(sfd, (struct sockaddr *)&paddr, &addrlen);
+    nsfd = accept(sfd, (struct sockaddr *)&paddr, &addrlen);
     if(nsfd < 0){
-        cout<<"Connection with Client could not be established"<<endl;
-        if(con){
-            delete con;
-        }
-        exit(1);
+        closeAndExit("Connection with Client could not be established");
     }
 
     while(1){
@@ -128,11 +127,7 @@ int main(){
         bzero(buffer, sizeof(buffer));
         int temp = recv(nsfd, buffer, 10000, 0);
         if(temp < 0){
-            cout<<"Error receiving Message from client"<<endl;
-            if(con){
-                delete con;
-            }
-            exit(5);
+            closeAndExit("Error receiving Message from client");
         }
         string tstr = buffer;
         cout<<"Request from client"<<tstr<<endl;
@@ -146,11 +141,10 @@ int main(){
         if(popReq.cmd == "exit"){
             break;
         }
-        
+
         string error = executeCmd(popReq.cmd);
         send(nsfd, error.c_str(),10000,0);
     }
-    close(nsfd);
-    close(sfd);
+    closeAndExit("");
     return 0;
 }
